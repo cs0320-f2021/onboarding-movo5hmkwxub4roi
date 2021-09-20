@@ -67,9 +67,44 @@ public final class Main {
         try {
           input = input.trim();
           String[] arguments = input.split(" ");
-          System.out.println(arguments[0]);
-          // TODO: complete your REPL by adding commands for addition "add" and subtraction
-          //  "subtract"
+
+          //If there are three arguments in the input, and the 1st argument is the add command,
+          if (arguments.length == 3 && arguments[0].equals("add")){
+            //Create a new MathBot, and use it to add and print the 1st and 2nd arguments
+            MathBot math = new MathBot();
+            System.out.println(math.add(Double.parseDouble(arguments[1]),
+                Double.parseDouble(arguments[2])));
+          }
+
+          //If there are 3 arguments in the input, and the 1st argument is the add command,
+          else if (arguments.length == 3 && arguments[0].equals("subtract")){
+            //Create a new MathBot, and use it to subtract and print the 1st and 2nd arguments
+            MathBot math = new MathBot();
+            System.out.println(math.subtract(Double.parseDouble(arguments[1]),
+                Double.parseDouble(arguments[2])));
+          }
+
+          //If there are 2 arguments in the input, and the 1st argument is the stars command,
+          else if (arguments.length == 2 && arguments[0].equals("stars")){
+
+          }
+
+          //If the first argument is the naive_neighbors command,
+          else if (arguments[0].equals("naive_neighbors")){
+            //Additionally, if there are 5 arguments,
+            if (arguments.length==5){
+
+            }
+
+            //Additionally, if there are 3 arguments,
+            if (arguments.length==3){
+
+            }
+          }
+
+          //else if (arguments.length)
+
+
         } catch (Exception e) {
           // e.printStackTrace();
           System.out.println("ERROR: We couldn't process your input");
