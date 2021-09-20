@@ -64,36 +64,42 @@ public final class Main {
       runSparkServer((int) options.valueOf("port"));
     }
 
-    // TODO: Add your REPL here!
     try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {
       String input;
       while ((input = br.readLine()) != null) {
         try {
           input = input.trim();
           String[] arguments = input.split(" ");
+
+          //Initialize starsList, an ArrayList where all the stars in a given file will be stored.
           ArrayList<String[]> starsList = new ArrayList<>();
+
+          //Initialize currFilePath, a String that has the file path of the loaded stars file
+          String currFilePath = "";
 
           //If there are three arguments in the input, and the 1st argument is the add command,
           if (arguments.length == 3 && arguments[0].equals("add")){
+
             //Create a new MathBot, and use it to add and print the 1st and 2nd arguments
             MathBot math = new MathBot();
             System.out.println(math.add(Double.parseDouble(arguments[1]),
                 Double.parseDouble(arguments[2])));
           }
 
-          //If there are 3 arguments in the input, and the 1st argument is the add command,
-          else if (arguments.length == 3 && arguments[0].equals("subtract")){
+          //If there are 3 arguments in the input, and the 1st argument is the subtract command,
+          if (arguments.length == 3 && arguments[0].equals("subtract")){
+
             //Create a new MathBot, and use it to subtract and print the 1st and 2nd arguments
             MathBot math = new MathBot();
             System.out.println(math.subtract(Double.parseDouble(arguments[1]),
                 Double.parseDouble(arguments[2])));
           }
 
-          //If there are 2 arguments in the input, and the 1st argument is the stars command:
-          else if (arguments.length == 2 && arguments[0].equals("stars")){
+          //If there are 2 arguments in the input, and the 1st argument is the stars command,
+          if (arguments.length == 2 && arguments[0].equals("stars")){
 
-            /*Create a new BufferedReader based off the 2nd argument, and set starsList to a
-              new ArrayList. */
+            /*Create a new BufferedReader based off the 2nd argument (a file path), and
+              set starsList to a new ArrayList. */
             BufferedReader starsReader = new BufferedReader(new FileReader(arguments[1]));
             starsList = new ArrayList<>();
 
@@ -101,12 +107,13 @@ public final class Main {
             String[] header = starsReader.readLine().split(",");
             if (!header[0].equals("StarID") || !header[1].equals("ProperName")
                 || !header[2].equals("X") || !header[3].equals("Y") || !header[4].equals("Z")){
-              System.out.println("ERROR: Invalid input file.");
+              throw new Exception("ERROR: Invalid input file.");
             }
 
-            /*If the path is valid, loop through all the lines in the file with the stars,
-              reading and adding them to starsList. */
+            /*If the path is valid, set it to currFilePath, and  loop through all the lines in
+              the file with the stars, reading and adding them to starsList. */
             else{
+              currFilePath = arguments[1];
               String currentStar;
               while ((currentStar = starsReader.readLine()) != null){
                 starsList.add(currentStar.split(","));
@@ -114,56 +121,81 @@ public final class Main {
             }
           }
 
+          //If the naive_neighbors command is run before a file was loaded, throw an error.
+          if (arguments[0].equals("naive_neighbors") && currFilePath.isEmpty()){
+            throw new Exception("ERROR: No star data has been loaded yet");
+          }
+
           //If the first argument is the naive_neighbors command, and if starsList is not empty,
-          else if (arguments[0].equals("naive_neighbors") && starsList.size() > 0) {
+          if (arguments[0].equals("naive_neighbors") && !currFilePath.isEmpty()) {
 
             //Initialize the coordinates and the number of neighbors.
             double[] coords = new double[3];
             int k = 0;
+            int sourceStarID = -1;
 
-            //Additionally, if there are 3 arguments,
+
+            //First, if there are 3 arguments,
             if (arguments.length == 3) {
+
+              //Update k, the number of requested neighbors
+              k = Integer.parseInt(arguments[1]);
 
               //Find the entry corresponding to the given star name in starsList, if there is one.
               String[] sourceStar = null;
-              for (String[] starInfo : starsList) {
-                if (arguments[2].equals(starInfo[1])) {
-                  sourceStar = starInfo;
+              for (String[] star : starsList) {
+                if (arguments[2].equals(star[1])) {
+                  sourceStar = star;
                 }
               }
 
               /*If the given star name does exist in starsList, and the amount of requested
-                neighbors is smaller to the total amount of stars, */
-              if (sourceStar != null && Integer.parseInt(arguments[1]) < starsList.size()) {
+                neighbors is smaller to the total amount of stars, update coords and k. */
+              if (sourceStar != null && k < starsList.size()) {
                 coords[0] = Double.parseDouble(sourceStar[2]);
                 coords[1] = Double.parseDouble(sourceStar[2]);
                 coords[2] = Double.parseDouble(sourceStar[2]);
                 k = Integer.parseInt(arguments[1]) + 1;
+                sourceStarID = Integer.parseInt(sourceStar[0]);
+              }
+
+              //If there are more requested neighbors than possible, throw an error.
+              else if (k >= starsList.size()){
+                throw new Exception("ERROR: Number of requested neighbors exceeds the number of loaded stars.");
               }
             }
 
-            /*Now, if there are 5 arguments, update the coordinates and the neighbors.*/
-            else if (arguments.length == 3) {
-              coords[0] = Double.parseDouble(arguments[2]);
-              coords[1] = Double.parseDouble(arguments[3]);
-              coords[2] = Double.parseDouble(arguments[4]);
-              k = Integer.parseInt(arguments[1]);
+            /*Now, if there are 5 arguments, and the amount of requested neighbors is no bigger
+              than the amount of stars in starsList, update coords, and k.*/
+            else if (arguments.length == 5) {
+              if (Integer.parseInt(arguments[1]) <= starsList.size()) {
+                coords[0] = Double.parseDouble(arguments[2]);
+                coords[1] = Double.parseDouble(arguments[3]);
+                coords[2] = Double.parseDouble(arguments[4]);
+                k = Integer.parseInt(arguments[1]);
+              }
+
+              //If there are more requested neighbors than possible, throw an error.
+              else if (k > starsList.size()){
+                throw new Exception("ERROR: Requested number of neighbors is greater than " + (starsList.size()-1) + ".");
+              }
             }
 
+
+            /*Find the k closest stars to the coords. If the naive_neighbors command used a
+              specific star (and not a coordinate position, then remove that specific star
+              from the neighbors list. */
+            System.out.println("Read " + k + " stars from " + currFilePath);
             ArrayList<Integer> neighbors = this.findBestNeighbors(k, coords, starsList);
-            if (arguments.length == 5){
-              System.out.println(neighbors.get(0));
+            if (sourceStarID != -1){
+              neighbors.remove(sourceStarID);
             }
-            neighbors.remove(0);
+
+            //Print out all the neighbors.
             for (int starID: neighbors){
               System.out.println(starID);
             }
           }
-
-
-
-
-
 
         } catch (Exception e) {
           // e.printStackTrace();
@@ -184,17 +216,15 @@ public final class Main {
    * @return a list of the starID of the closest stars
    */
   public ArrayList<Integer> findBestNeighbors(int k, double[] coords, ArrayList<String[]> starsList){
+
     //Create a new list to store the closest stars to the position.
     ArrayList<Integer> bestNeighbors = new ArrayList<>();
-
-    //Go through the list k times
-    int counter = 0;
 
     //Loop through the stars k times
     for (int i = 0; i<k; i++){
 
       //Initialize the minimum distance and the best neighbor of this run to temporary values.
-      double currentMin = 1.7976931348623157E308; //the biggest possible value for a double
+      double currentMin = Double.MAX_VALUE; //the biggest possible value for a double
       int currentBestN = -1;
 
       //For every star in the list, calculate its distance from the coords.
